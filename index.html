@@ -5,49 +5,20 @@
 <title>Polla Salvaje VIP</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-body {
-  margin:0;
-  font-family: Arial, sans-serif;
-  background:#0b1020;
-  color:#fff;
-}
-header {
-  padding:20px;
-  text-align:center;
-  background:#111a33;
-}
-h1 {
-  margin:0;
-  font-size:26px;
-}
-.container {
-  max-width:900px;
-  margin:auto;
-  padding:15px;
-}
-.card {
-  background:#111a33;
-  border-radius:12px;
-  padding:15px;
-  margin-bottom:15px;
-}
-table {
-  width:100%;
-  border-collapse:collapse;
-}
-th, td {
-  padding:8px;
-  border-bottom:1px solid #222;
-  text-align:left;
-}
-th {
-  color:#aaa;
-}
-.total {
-  font-size:28px;
-  font-weight:bold;
-  text-align:center;
-}
+  :root{
+    --bg:#0b1020; --card:#111a33; --text:#e8eefc; --muted:#9fb3d9; --line:#1d2747;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+  header{padding:18px;text-align:center;background:var(--card);position:sticky;top:0;z-index:10}
+  h1{margin:0;font-size:22px;letter-spacing:.5px}
+  .container{max-width:980px;margin:0 auto;padding:16px}
+  .card{background:var(--card);border-radius:14px;padding:14px;margin:12px 0;border:1px solid var(--line);box-shadow:0 10px 24px rgba(0,0,0,.25)}
+  .total{font-size:26px;font-weight:800;text-align:center}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:10px;border-bottom:1px solid var(--line);text-align:left}
+  th{color:var(--muted);font-size:12px;letter-spacing:.3px;text-transform:uppercase}
+  .muted{color:var(--muted);font-size:13px}
 </style>
 </head>
 <body>
@@ -60,10 +31,11 @@ th {
 
   <div class="card">
     <div class="total" id="total">Total Jugado: —</div>
+    <div class="muted" id="estado" style="text-align:center;margin-top:6px"></div>
   </div>
 
   <div class="card">
-    <h3>Jugadas</h3>
+    <h3 style="margin:0 0 8px 0">Jugadas</h3>
     <table>
       <thead>
         <tr>
@@ -74,34 +46,59 @@ th {
       </thead>
       <tbody id="jugadas"></tbody>
     </table>
+    <div id="msg" class="muted" style="padding-top:8px"></div>
   </div>
 
 </div>
 
 <script>
-/* AQUÍ VA TU GOOGLE SHEET PUBLICADO */
-const SHEET_URL = "https://opensheet.elk.sh/10mdLTkNAvDtco1jhZFxyHhSUARA3GY9lmSqhKP8I_xY/edit?gid=0#gid=0/JUGADAS";
+// URL correcta de OpenSheet: https://opensheet.elk.sh/<ID>/<NombreHoja>
+const SHEET_URL = "https://opensheet.elk.sh/10mdLTkNAvDtco1jhZFxyHhSUARA3GY9lmSqhKP8I_xY/Jugadas";
 
-fetch(SHEET_URL)
-.then(res => res.json())
-.then(data => {
+const fmt = n => Number(n||0).toLocaleString("es-VE");
+
+function render(rows){
   let total = 0;
-  const tbody = document.getElementById("jugadas");
+  const tb = document.getElementById("jugadas");
+  tb.innerHTML = "";
 
-  data.forEach(row => {
-    total += Number(row.monto);
-    tbody.innerHTML += `
+  rows.forEach(r => {
+    // admitir encabezados con mayúsculas/minúsculas
+    const nombre = r.nombre ?? r.Nombre ?? r.NOMBRE ?? "";
+    const monto  = Number(r.monto ?? r.Monto ?? r.MONTO ?? 0);
+
+    const nums = [r.num1,r.num2,r.num3,r.num4,r.num5,r.num6,
+                  r.Num1,r.Num2,r.Num3,r.Num4,r.Num5,r.Num6]
+      .filter(v => v !== undefined && v !== null && String(v).trim() !== "")
+      .join(" ");
+
+    total += monto;
+
+    tb.innerHTML += `
       <tr>
-        <td>${row.nombre}</td>
-        <td>${row.numeros}</td>
-        <td>${row.monto}</td>
+        <td>${nombre}</td>
+        <td>${nums}</td>
+        <td>Bs ${fmt(monto)}</td>
       </tr>
     `;
   });
 
-  document.getElementById("total").innerText =
-    "Total Jugado: Bs " + total;
-});
+  document.getElementById("total").textContent = "Total Jugado: Bs " + fmt(total);
+  document.getElementById("estado").textContent = rows.length ? "" :
+    "No hay filas visibles. Revisa que el Sheet esté compartido como ‘Cualquier persona con el enlace – Lector’.";
+}
+
+fetch(SHEET_URL, { cache: "no-store" })
+  .then(r => {
+    if(!r.ok) throw new Error("OpenSheet no respondió");
+    return r.json();
+  })
+  .then(render)
+  .catch(err => {
+    console.error(err);
+    document.getElementById("msg").textContent =
+      "No se pudo leer el Sheet. Verifica: 1) que la hoja se llame ‘Jugadas’, 2) permisos públicos de lectura, 3) que existan columnas nombre, num1..num6 y monto.";
+  });
 </script>
 
 </body>
