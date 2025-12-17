@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<title>Polla Salvaje VIP</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root{
+    --bg:#0b1020; --card:#111a33; --text:#e8eefc; --muted:#9fb3d9; --line:#1d2747;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+  header{padding:18px;text-align:center;background:var(--card);position:sticky;top:0;z-index:10}
+  h1{margin:0;font-size:22px;letter-spacing:.5px}
+
+  .container{max-width:980px;margin:0 auto;padding:16px}
+  .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  @media (max-width:720px){.grid{grid-template-columns:1fr}}
+
+  .card{
+    background:var(--card);
+    border-radius:14px;
+    padding:14px;
+    margin:12px 0;
+    border:1px solid var(--line);
+    box-shadow:0 10px 24px rgba(0,0,0,.25)
+  }
+
+  .kpi .label{color:var(--muted);font-size:12px;letter-spacing:.3px;text-transform:uppercase}
+  .kpi .value{font-size:22px;font-weight:900;margin-top:6px}
+  .sub{color:var(--muted);font-size:13px;margin-top:6px}
+
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+  th{color:var(--muted);font-size:12px;letter-spacing:.3px;text-transform:uppercase}
+
+  .chips{line-height:1.8}
+  .chip{
+    display:inline-block;
+    padding:4px 8px;
+    margin:2px 4px 2px 0;
+    border-radius:999px;
+    font-weight:800;
+    font-size:14px;
+    letter-spacing:.2px;
+  }
+  .chip.red{background:#7a1c1c;border:1px solid #b33;color:#fff}
+  .chip.green{background:#1f7a3a;border:1px solid #3fbf7f;color:#fff}
+
+  .badge{
+    display:inline-block;
+    padding:4px 10px;
+    border-radius:999px;
+    border:1px solid var(--line);
+    color:var(--muted);
+    font-size:12px;
+  }
+
+  .toolbar{
+    display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between;
+    margin:10px 0 8px 0;
+  }
+  .left, .right{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+  input[type="search"], select, button{
+    border-radius:12px; border:1px solid var(--line); background:#0f1730; color:var(--text);
+    padding:10px 12px; font-size:14px;
+  }
+  input[type="search"]{min-width:240px; flex:1}
+  button{cursor:pointer; font-weight:800}
+  button:disabled{opacity:.5; cursor:not-allowed}
+  .pager{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+  .pager .info{color:var(--muted); font-size:13px}
+
+  /* ===== PRINT/PDF ===== */
+  @media print{
+    header, .no-print { display:none !important; }
+    body{background:#fff;color:#000}
+    .card{box-shadow:none;border:1px solid #ddd;background:#fff}
+    th{color:#333}
+    .badge{border:1px solid #ddd;color:#333}
+    .chip.red{background:#f2f2f2;color:#000;border:1px solid #ccc}
+    .chip.green{background:#c9f2d6;color:#000;border:1px solid #7ad39a}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>POLLA SALVAJE VIP</h1>
+</header>
+
+<div class="container">
+
+  <!-- KPIs -->
+  <div class="grid">
+    <div class="card kpi">
+      <div class="label">Total jugado</div>
+      <div class="value" id="kpiTotal">—</div>
+      <div class="sub" id="estado">Cargando…</div>
+    </div>
+
+    <div class="card kpi">
+      <div class="label">A repartir (75%)</div>
+      <div class="value" id="kpiRepartir">—</div>
+      <div class="sub">6 aciertos: 60% · 5 aciertos: 15%</div>
+    </div>
+
+    <div class="card kpi">
+      <div class="label">Aciertos - Premio</div>
+      <div class="value" style="font-size:16px;font-weight:800;line-height:1.5">
+        <div>6: <span id="premio6Total">—</span> <span class="badge" id="ganadores6">0 ganadores</span></div>
+        <div>5: <span id="premio5Total">—</span> <span class="badge" id="ganadores5">0 ganadores</span></div>
+      </div>
+      <div class="sub" id="publicadoTxt">Resultados: NO</div>
+    </div>
+
+    <div class="card kpi">
+      <div class="label">Jugadas</div>
+      <div class="value"><span id="kpiJugadas">0</span></div>
+      <div class="sub">Clientes: <span id="kpiClientes">0</span></div>
+    </div>
+  </div>
+
+  <!-- Tabla -->
+  <div class="card">
+    <div class="toolbar no-print">
+      <div class="left">
+        <input id="q" type="search" placeholder="Buscar por nombre o ticket…" autocomplete="off" />
+        <select id="pageSize" title="Filas por página">
+          <option value="10">10 / página</option>
+          <option value="20" selected>20 / página</option>
+          <option value="50">50 / página</option>
+          <option value="100">100 / página</option>
+        </select>
+      </div>
+
+      <div class="right">
+        <span class="badge" id="publicadoBadge">Publicado: NO</span>
+        <button id="btnPdf" title="Descargar/Guardar como PDF">PDF</button>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <h3 style="margin:0">Tickets</h3>
+      <span class="badge no-print" id="rangeInfo">Mostrando 0–0</span>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Hora</th>
+          <th>Ticket</th>
+          <th>Cliente</th>
+          <th>Números</th>
+          <th>Monto</th>
+          <th>Premio</th>
+        </tr>
+      </thead>
+      <tbody id="tabla"></tbody>
+    </table>
+
+    <div class="pager no-print" style="margin-top:10px">
+      <button id="first">⏮</button>
+      <button id="prev">◀</button>
+      <span class="info" id="pageInfo">Página 1 de 1</span>
+      <button id="next">▶</button>
+      <button id="last">⏭</button>
+    </div>
+
+    <div id="msg" class="sub"></div>
+  </div>
+
+</div>
+
+<script>
+/** ========= CONFIG ========= **/
+const SHEET_ID = "10mdLTkNAvDtco1jhZFxyHhSUARA3GY9lmSqhKP8I_xY";
+const SHEET_JUGADAS = "Jugadas";
+const SHEET_RESULTADOS = "Resultados";
+const EVENT_ID = "POLLA SALVAJE VIP";
+
+// Distribución
+const PCT_REPARTIR_TOTAL = 0.75;
+const PCT_PREMIO_6 = 0.60;
+const PCT_PREMIO_5 = 0.15;
+
+/** ========= URLs ========= **/
+const URL_JUGADAS = `https://opensheet.elk.sh/${SHEET_ID}/${encodeURIComponent(SHEET_JUGADAS)}`;
+const URL_RESULTADOS = `https://opensheet.elk.sh/${SHEET_ID}/${encodeURIComponent(SHEET_RESULTADOS)}`;
+
+/** ========= Helpers ========= **/
+const fmtMoney = n => "Bs " + Number(n||0).toLocaleString("es-VE");
+const up = v => String(v ?? "").trim().toUpperCase();
+function pick(obj, ...keys){
+  for(const k of keys){
+    if(obj[k] !== undefined && obj[k] !== null && String(obj[k]).trim() !== "") return obj[k];
+  }
+  return "";
+}
+function setEstado(txt){ document.getElementById("estado").textContent = txt; }
+
+/** ========= Estado global ========= **/
+let PUBLICADO = false;
+let GANADORES = [];
+let JUGADAS = []; // data normalizada
+
+let currentPage = 1;
+let pageSize = 20;
+let query = "";
+
+/** ========= UI ========= **/
+const elQ = document.getElementById("q");
+const elPageSize = document.getElementById("pageSize");
+const elTable = document.getElementById("tabla");
+
+function setPublicadoUI(){
+  document.getElementById("publicadoBadge").textContent = "Publicado: " + (PUBLICADO ? "SI" : "NO");
+  document.getElementById("publicadoTxt").textContent = "Resultados: " + (PUBLICADO ? "SI" : "NO");
+}
+
+function contarAciertos(nums, ganadores){
+  const setG = new Set(ganadores.map(Number));
+  const setN = new Set(nums.map(Number));
+  let c = 0;
+  setN.forEach(n => { if(setG.has(n)) c++; });
+  return c;
+}
+
+function computeKPIs(){
+  const totalJugado = JUGADAS.reduce((s,j)=>s + (Number(j.monto)||0), 0);
+  const aRepartir = totalJugado * PCT_REPARTIR_TOTAL;
+
+  // premios sobre total jugado (sin mostrar casa)
+  const premio6Total = totalJugado * PCT_PREMIO_6;
+  const premio5Total = totalJugado * PCT_PREMIO_5;
+
+  const winners6 = PUBLICADO ? JUGADAS.filter(j => j.aciertos === 6) : [];
+  const winners5 = PUBLICADO ? JUGADAS.filter(j => j.aciertos === 5) : [];
+
+  const pago6 = winners6.length ? (premio6Total / winners6.length) : 0;
+  const pago5 = winners5.length ? (premio5Total / winners5.length) : 0;
+
+  const clientes = new Set(JUGADAS.map(j => (j.nombre||"").trim()).filter(Boolean));
+
+  document.getElementById("kpiTotal").textContent = fmtMoney(totalJugado);
+  document.getElementById("kpiRepartir").textContent = fmtMoney(aRepartir);
+  document.getElementById("premio6Total").textContent = fmtMoney(premio6Total);
+  document.getElementById("premio5Total").textContent = fmtMoney(premio5Total);
+  document.getElementById("ganadores6").textContent = `${winners6.length} ganadores`;
+  document.getElementById("ganadores5").textContent = `${winners5.length} ganadores`;
+  document.getElementById("kpiJugadas").textContent = JUGADAS.length;
+  document.getElementById("kpiClientes").textContent = clientes.size;
+
+  // guardar para render premio por fila
+  window.__pago6 = pago6;
+  window.__pago5 = pago5;
+}
+
+function filterRows(){
+  const q = query.trim().toLowerCase();
+  if(!q) return JUGADAS;
+
+  return JUGADAS.filter(j => {
+    const name = (j.nombre||"").toLowerCase();
+    const ticket = String(j.ticket||"").toLowerCase();
+    return name.includes(q) || ticket.includes(q);
+  });
+}
+
+function renderTable(){
+  const rows = filterRows();
+
+  const total = rows.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  currentPage = Math.min(Math.max(1, currentPage), totalPages);
+
+  const start = (currentPage - 1) * pageSize;
+  const end = Math.min(start + pageSize, total);
+  const pageRows = rows.slice(start, end);
+
+  // range label
+  document.getElementById("rangeInfo").textContent =
+    total ? `Mostrando ${start+1}–${end} de ${total}` : "Mostrando 0–0";
+
+  // pager label
+  document.getElementById("pageInfo").textContent = `Página ${currentPage} de ${totalPages}`;
+
+  // pager buttons
+  document.getElementById("first").disabled = currentPage === 1;
+  document.getElementById("prev").disabled  = currentPage === 1;
+  document.getElementById("next").disabled  = currentPage === totalPages;
+  document.getElementById("last").disabled  = currentPage === totalPages;
+
+  // table
+  elTable.innerHTML = "";
+  pageRows.forEach(j => {
+    const chips = j.nums.map(n => {
+      const ok = PUBLICADO && GANADORES.includes(n);
+      return `<span class="chip ${ok ? "green":"red"}">${n}</span>`;
+    }).join("");
+
+    let premio = "—";
+    if(PUBLICADO){
+      if(j.aciertos === 6) premio = fmtMoney(window.__pago6);
+      else if(j.aciertos === 5) premio = fmtMoney(window.__pago5);
+    }
+
+    elTable.innerHTML += `
+      <tr>
+        <td>${j.hora || ""}</td>
+        <td>${j.ticket || ""}</td>
+        <td>${j.nombre || ""}</td>
+        <td class="chips">${chips}</td>
+        <td>${fmtMoney(j.monto)}</td>
+        <td>${premio}</td>
+      </tr>
+    `;
+  });
+
+  document.getElementById("msg").textContent =
+    total ? (PUBLICADO ? "Resultados publicados ✅ (verde = acierto)" : "Resultados NO publicados") :
+    "No hay datos para mostrar.";
+}
+
+/** ========= Cargar Resultados ========= **/
+async function loadResultados(){
+  const res = await fetch(URL_RESULTADOS + "?t=" + Date.now(), { cache:"no-store" });
+  if(!res.ok) throw new Error("No se pudo leer Resultados");
+  const rows = await res.json();
+
+  const fila = rows.find(r => {
+    const ev = pick(r, "event_id","Event_id","EVENT_ID","Evento","evento");
+    const pub = pick(r, "Publicado","publicado","PUBLICADO");
+    return String(ev).trim() === EVENT_ID && up(pub) === "SI";
+  });
+
+  if(!fila){
+    PUBLICADO = false;
+    GANADORES = [];
+    setPublicadoUI();
+    return;
+  }
+
+  PUBLICADO = true;
+  GANADORES = [
+    pick(fila,"g1","G1"), pick(fila,"g2","G2"), pick(fila,"g3","G3"),
+    pick(fila,"g4","G4"), pick(fila,"g5","G5"), pick(fila,"g6","G6"),
+  ].filter(x => x !== "" && x !== undefined && x !== null).map(x => Number(x));
+
+  setPublicadoUI();
+}
+
+/** ========= Cargar Jugadas ========= **/
+async function loadJugadas(){
+  const res = await fetch(URL_JUGADAS + "?t=" + Date.now(), { cache:"no-store" });
+  if(!res.ok) throw new Error("No se pudo leer Jugadas");
+  const rows = await res.json();
+
+  JUGADAS = rows.map(r => {
+    const nombre = pick(r,"nombre","Nombre","NOMBRE");
+    const monto = Number(pick(r,"monto","Monto","MONTO") || 0);
+    const hora = pick(r,"hora","Hora","HORA");
+    const ticket = pick(r,"ticket","Ticket","TICKET");
+
+    const nums = [
+      pick(r,"num1","Num1","NUM1"),
+      pick(r,"num2","Num2","NUM2"),
+      pick(r,"num3","Num3","NUM3"),
+      pick(r,"num4","Num4","NUM4"),
+      pick(r,"num5","Num5","NUM5"),
+      pick(r,"num6","Num6","NUM6"),
+    ].filter(v => v !== "" && v !== undefined && v !== null).map(v => Number(v));
+
+    const aciertos = PUBLICADO ? contarAciertos(nums, GANADORES) : 0;
+
+    return { nombre, monto, hora, ticket, nums, aciertos };
+  });
+
+  // ordenar por hora/ticket si quieres (opcional)
+  // JUGADAS.sort((a,b)=> String(a.hora).localeCompare(String(b.hora)));
+
+  computeKPIs();
+  currentPage = 1;
+  renderTable();
+}
+
+/** ========= Eventos ========= **/
+elQ.addEventListener("input", () => {
+  query = elQ.value || "";
+  currentPage = 1;
+  renderTable();
+});
+
+elPageSize.addEventListener("change", () => {
+  pageSize = Number(elPageSize.value || 20);
+  currentPage = 1;
+  renderTable();
+});
+
+document.getElementById("first").addEventListener("click", ()=>{ currentPage = 1; renderTable(); });
+document.getElementById("prev").addEventListener("click", ()=>{ currentPage = Math.max(1, currentPage-1); renderTable(); });
+document.getElementById("next").addEventListener("click", ()=>{ currentPage = currentPage+1; renderTable(); });
+document.getElementById("last").addEventListener("click", ()=> {
+  const total = filterRows().length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  currentPage = totalPages;
+  renderTable();
+});
+
+// Botón PDF (usa imprimir -> Guardar como PDF)
+document.getElementById("btnPdf").addEventListener("click", () => {
+  window.print();
+});
+
+/** ========= Init ========= **/
+(async function init(){
+  try{
+    setEstado("Cargando datos…");
+    await loadResultados();
+    await loadJugadas();
+    setEstado("Listo");
+  }catch(e){
+    console.error(e);
+    setEstado("Error cargando datos");
+    document.getElementById("msg").textContent =
+      "Verifica que tus hojas se llamen exactamente 'Jugadas' y 'Resultados', y que el Sheet sea público de lectura.";
+  }
+})();
+</script>
+
+</body>
+        </html>
